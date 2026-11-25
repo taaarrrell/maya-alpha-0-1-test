@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="data:," />
+    <title>Maya Alpha 0.1 M1 Disposable</title>
+    <style>
+      :root {
+        --bg: #0d1117;
+        --bg-raise: #131a22;
+        --panel: #16202b;
+        --panel-2: #1b2836;
+        --line: #2a3a4c;
+        --line-soft: #223041;
+        --text: #e9eff5;
+        --muted: #9db1c4;
+        --faint: #71869c;
+        --owner-bg: #175e57;
+        --owner-text: #eefbf8;
+        --maya-bg: #1a2634;
+        --gold: #f0c35c;
+        --gold-dim: #8a6d2f;
+        --green: #7fd6a4;
+        --amber: #f2b25c;
+        --danger-bg: #3d1d20;
+        --danger-line: #7c3a40;
+        --danger-text: #ffb4ab;
+        --error-bg: #33270f;
+        --error-line: #7a5c1e;
+        --error-text: #ffd98a;
+        --focus: #8ecbff;
+        --radius: 14px;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-size: 16px;
+        line-height: 1.45;
+        display: flex;
+        flex-direction: column;
+        height: 100dvh;
+        overflow: hidden;
+      }
+      button, input { font: inherit; }
+      button {
+        min-height: 40px;
+        padding: 0.45rem 0.85rem;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: var(--text);
+        cursor: pointer;
+      }
+      button:hover:not(:disabled) { border-color: var(--faint); }
+      button:disabled { opacity: 0.45; cursor: not-allowed; }
+      button:focus-visible, input:focus-visible, summary:focus-visible {
+        outline: 2px solid var(--focus);
+        outline-offset: 2px;
+      }
+      .sr-only {
+        position: absolute; width: 1px; height: 1px;
+        clip-path: inset(50%); overflow: hidden; white-space: nowrap;
+      }
+
+      /* ---------- Top bar ---------- */
+      .topbar {
+        display: flex; align-items: flex-start; justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.8rem 1rem 0.6rem;
+        background: var(--bg-raise);
+        border-bottom: 1px solid var(--line-soft);
+      }
+      .brand-name { font-size: 1.25rem; font-weight: 700; letter-spacing: 0.01em; }
+      .brand-name .alpha {
+        font-size: 0.8rem; font-weight: 600; color: var(--gold);
+        border: 1px solid var(--gold-dim); border-radius: 999px;
+        padding: 0.1rem 0.5rem; margin-left: 0.4rem; vertical-align: 0.18em;
+        white-space: nowrap;
+      }
+      .brand-sub { color: var(--muted); font-size: 0.85rem; margin-top: 0.15rem; }
+      .badge-sim {
+        flex: none;
+        font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+        color: var(--gold);
+        border: 1px solid var(--gold-dim);
+        background: rgba(240, 195, 92, 0.08);
+        border-radius: 6px; padding: 0.3rem 0.5rem; margin-top: 0.2rem;
+      }
+
+      .toolbar {
+        display: flex; flex-wrap: wrap; gap: 0.5rem;
+        padding: 0.6rem 1rem;
+        background: var(--bg-raise);
+        border-bottom: 1px solid var(--line-soft);
+      }
+      .toolbar button { min-height: 40px; font-size: 0.9rem; }
+
+      .notice-sim {
+        padding: 0.55rem 1rem;
+        background: rgba(240, 195, 92, 0.07);
+        border-bottom: 1px solid var(--line-soft);
+        color: var(--muted); font-size: 0.88rem;
+      }
+      .notice-sim strong { color: var(--gold); font-weight: 600; }
+
+      /* ---------- Banners ---------- */
+      .banner {
+        margin: 0.7rem 1rem 0;
+        border-radius: var(--radius);
+        padding: 0.75rem 0.9rem;
+        font-size: 0.92rem;
+      }
+      .banner[hidden] { display: none; }
+      .banner-danger { background: var(--danger-bg); border: 1px solid var(--danger-line); color: var(--danger-text); }
+      .banner-danger strong { color: #ffd9d4; }
+      .banner-error { background: var(--error-bg); border: 1px solid var(--error-line); color: var(--error-text); display: flex; gap: 0.6rem; align-items: flex-start; justify-content: space-between; }
+      .banner-error[hidden] { display: none; }
+      .banner-error button { min-height: 36px; flex: none; background: transparent; border-color: var(--error-line); color: var(--error-text); font-size: 0.85rem; }
+      .banner .detail { display: block; margin-top: 0.3rem; font-size: 0.83rem; opacity: 0.85; word-break: break-word; }
+
+      .confirmbar {
+        margin: 0.7rem 1rem 0;
+        border: 1px solid var(--danger-line);
+        background: var(--bg-raise);
+        border-radius: var(--radius);
+        padding: 0.75rem 0.9rem;
+        display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center;
+      }
+      .confirmbar[hidden] { display: none; }
+      .confirmbar p { margin: 0; flex: 1 1 220px; font-size: 0.92rem; }
+      .confirmbar .danger-btn { background: #6e2a30; border-color: var(--danger-line); color: #ffe3df; }
+
+      .status {
+        padding: 0.45rem 1rem 0;
+        color: var(--muted); font-size: 0.85rem; min-height: 0;
+      }
+      .status:empty { padding: 0; }
+
+      /* ---------- Identity panel ---------- */
+      .identity {
+        margin: 0.7rem 1rem 0;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 1rem 1.1rem;
+        overflow-y: auto;
+        max-height: 55dvh;
+      }
+      .identity[hidden] { display: none; }
+      .identity h2 { font-size: 1.05rem; margin: 0 0 0.3rem; }
+      .identity h3 { font-size: 0.95rem; margin: 1.1rem 0 0.45rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+      .identity .ro {
+        font-size: 0.72rem; font-weight: 600; color: var(--muted);
+        border: 1px solid var(--line); border-radius: 999px; padding: 0.1rem 0.5rem;
+      }
+      .id-note { color: var(--muted); font-size: 0.88rem; margin: 0.2rem 0 0.8rem; }
+      .badge {
+        display: inline-block;
+        font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em;
+        border-radius: 5px; padding: 0.14rem 0.42rem; vertical-align: 0.12em;
+        white-space: nowrap;
+      }
+      .badge-verified { color: var(--green); border: 1px solid #2f5c44; background: rgba(127, 214, 164, 0.08); }
+      .badge-provisional { color: var(--amber); border: 1px solid #6e5226; background: rgba(242, 178, 92, 0.08); }
+      .identity dl { margin: 0; display: grid; gap: 0.65rem; }
+      .identity .id-row dt { font-size: 0.8rem; color: var(--faint); font-weight: 600; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+      .identity .id-row dd { margin: 0.15rem 0 0; font-size: 0.97rem; }
+      .identity ul, .identity ol { margin: 0; padding-left: 1.25rem; display: grid; gap: 0.55rem; }
+      .identity li { font-size: 0.93rem; color: var(--text); }
+      .identity li .pname { font-weight: 650; }
+      .identity li .ptext { color: var(--muted); }
+
+      /* ---------- Messages ---------- */
+      .messages {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        padding: 1rem;
+        display: flex; flex-direction: column; gap: 0.7rem;
+        width: 100%; max-width: 880px; margin: 0 auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .empty-state {
+        margin: auto 0;
+        text-align: center; color: var(--muted);
+        padding: 2rem 1rem;
+      }
+      .empty-state .big { color: var(--text); font-size: 1.05rem; font-weight: 600; margin-bottom: 0.35rem; }
+      .row { display: flex; }
+      .row-owner { justify-content: flex-end; }
+      .row-maya { justify-content: flex-start; }
+      .bubble {
+        max-width: 86%;
+        border-radius: var(--radius);
+        padding: 0.6rem 0.8rem 0.65rem;
+        overflow-wrap: anywhere;
+      }
+      .bubble-owner { background: var(--owner-bg); color: var(--owner-text); border-bottom-right-radius: 4px; }
+      .bubble-maya { background: var(--maya-bg); border: 1px solid var(--line-soft); border-bottom-left-radius: 4px; }
+      .bubble-head {
+        display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+        font-size: 0.74rem; margin-bottom: 0.3rem;
+      }
+      .bubble-owner .bubble-head { color: #bfe8e1; }
+      .bubble-maya .bubble-head { color: var(--muted); }
+      .speaker { font-weight: 700; letter-spacing: 0.03em; }
+      .bubble-head time { opacity: 0.75; }
+      .badge-sim-sm {
+        font-size: 0.64rem; font-weight: 700; letter-spacing: 0.07em;
+        color: var(--gold); border: 1px solid var(--gold-dim);
+        border-radius: 4px; padding: 0.08rem 0.34rem;
+      }
+      .badge-unsaved {
+        font-size: 0.64rem; font-weight: 700; letter-spacing: 0.07em;
+        color: var(--danger-text); border: 1px solid var(--danger-line);
+        border-radius: 4px; padding: 0.08rem 0.34rem;
+      }
+      .bubble-text { margin: 0; white-space: pre-wrap; font-size: 0.98rem; }
+      .typing { color: var(--muted); font-style: italic; }
+      .typing .dots span { animation: blink 1.2s infinite; }
+      .typing .dots span:nth-child(2) { animation-delay: 0.2s; }
+      .typing .dots span:nth-child(3) { animation-delay: 0.4s; }
+      @keyframes blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+      @media (prefers-reduced-motion: reduce) {
+        .typing .dots span { animation: none; opacity: 0.7; }
+      }
+
+      /* ---------- Composer ---------- */
+      .composer-wrap {
+        border-top: 1px solid var(--line-soft);
+        background: var(--bg-raise);
+        padding: 0.55rem 1rem calc(0.7rem + env(safe-area-inset-bottom));
+      }
+      .chips {
+        display: flex; flex-wrap: wrap; gap: 0.45rem;
+        max-width: 880px; margin: 0 auto 0.55rem;
+      }
+      .chips button {
+        min-height: 36px; font-size: 0.85rem; border-radius: 999px;
+        color: var(--muted); background: var(--panel);
+      }
+      .composer {
+        display: flex; gap: 0.55rem;
+        max-width: 880px; margin: 0 auto;
+      }
+      .composer input {
+        flex: 1 1 auto; min-width: 0;
+        min-height: 46px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--text);
+        padding: 0.6rem 0.8rem;
+      }
+      .composer input::placeholder { color: var(--faint); }
+      .composer button[type="submit"] {
+        flex: none; min-height: 46px; padding: 0 1.2rem;
+        background: var(--owner-bg); border-color: #2a7a72; font-weight: 650;
+      }
+      .footnote {
+        max-width: 880px; margin: 0.5rem auto 0;
+        color: var(--faint); font-size: 0.78rem;
+      }
+      @media (min-width: 720px) {
+        .bubble { max-width: 72%; }
+        .identity { max-height: 60dvh; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <div class="brand-name">M.A.Y.A.<span class="alpha">Alpha 0.1</span></div>
+        <div class="brand-sub">Milestone 1 · Disposable conversational interface</div>
+      </div>
+      <span class="badge-sim" aria-label="All responses are simulated">SIMULATED</span>
+    </header>
+
+    <div class="toolbar" role="group" aria-label="Conversation tools">
+      <button type="button" id="identityBtn" aria-expanded="false" aria-controls="identityPanel">Identity</button>
+      <button type="button" id="exportBtn">Export history</button>
+      <button type="button" id="clearBtn">Clear history</button>
+    </div>
+
+    <p class="notice-sim">
+      <strong>Simulated responses.</strong> No AI model is connected in this milestone.
+      Replies come from fixed offline rules so the chat experience and history handling can be tested.
+    </p>
+
+    <div id="corruptBanner" class="banner banner-danger" role="alert" hidden>
+      <strong>Saved history could not be read.</strong>
+      The stored conversation is malformed or unreadable, so it has <em>not</em> been treated as empty.
+      To protect it, history saving is paused and the stored data has been left exactly as found —
+      nothing has been overwritten. You can still chat, but new messages will not be saved.
+      <span class="detail" id="corruptDetail"></span>
+    </div>
+
+    <div id="errorBanner" class="banner banner-error" role="alert" hidden>
+      <span id="errorText"></span>
+      <button type="button" id="errorDismiss">Dismiss</button>
+    </div>
+
+    <div id="clearConfirm" class="confirmbar" hidden>
+      <p>Clear all saved conversation history? This cannot be undone.</p>
+      <button type="button" id="confirmClearBtn" class="danger-btn">Yes, clear history</button>
+      <button type="button" id="cancelClearBtn">Cancel</button>
+    </div>
+
+    <p id="statusLine" class="status" role="status" aria-live="polite"></p>
+
+    <section id="identityPanel" class="identity" aria-label="M.A.Y.A. identity configuration" hidden>
+      <h2>Identity configuration <span class="ro">Read-only</span></h2>
+      <p class="id-note">
+        This configuration states who M.A.Y.A. is. It is separate from the simulated reply engine:
+        the simulator follows fixed offline rules, has no reasoning of its own, and remembers nothing
+        beyond the chat history stored on this page.
+      </p>
+      <p class="id-note">
+        <strong>Public test copy — provisional identity.</strong> The owner's name has been removed
+        from this copy. One principle is adapted: Human Agency reads "The owner authorises…"
+        here; the verified A3-A6 v1.4 wording names the owner. The purpose, personality guidance,
+        and traits are provisional proposals pending owner approval.
+      </p>
+      <dl>
+        <div class="id-row">
+          <dt>Display name <span class="badge badge-verified">VERIFIED — A3-A6 v1.4</span></dt>
+          <dd>M.A.Y.A.</dd>
+        </div>
+        <div class="id-row">
+          <dt>Full name <span class="badge badge-verified">VERIFIED — A3-A6 v1.4</span></dt>
+          <dd>Multimodal Artificial Yielding Agent</dd>
+        </div>
+        <div class="id-row">
+          <dt>Purpose <span class="badge badge-provisional">PROVISIONAL</span></dt>
+          <dd>To be a personal assistant that helps its owner think, remember, and act — under the owner's authority at all times.</dd>
+        </div>
+        <div class="id-row">
+          <dt>Personality guidance <span class="badge badge-provisional">PROVISIONAL</span></dt>
+          <dd>Warm, direct, and concise. Asks one clear question at a time when something is ambiguous. Never pretends to know what it does not.</dd>
+        </div>
+        <div class="id-row">
+          <dt>Traits <span class="badge badge-provisional">PROVISIONAL</span></dt>
+          <dd>No owner-approved traits wording is on file yet.</dd>
+        </div>
+      </dl>
+
+      <h3>Principles <span class="badge badge-verified">VERIFIED — A3-A6 v1.4</span></h3>
+      <ol>
+        <li><span class="pname">Core Sovereignty:</span> <span class="ptext">Identity, continuity, memory, and foundational capability live in the Core. No external provider may become a dependency for any of them.</span></li>
+        <li><span class="pname">Independent Verification:</span> <span class="ptext">Every external result is checked by M.A.Y.A. before use. A provider's claim of success is not verification.</span></li>
+        <li><span class="pname">Human Agency:</span> <span class="ptext">The owner authorises consequential decisions. Systems propose; the owner decides.</span></li>
+        <li><span class="pname">Privacy by Design:</span> <span class="ptext">No memory access by default. Disclosure is per-task and per-record, minimum necessary.</span></li>
+        <li><span class="pname">Modular Intelligence:</span> <span class="ptext">Providers are replaceable modules. Removing any one leaves M.A.Y.A. operable locally.</span></li>
+      </ol>
+
+      <h3>Boundaries <span class="badge badge-verified">VERIFIED — A3-A6 v1.4</span></h3>
+      <ul>
+        <li>No spending.</li>
+        <li>No sharing or disclosure of memories.</li>
+        <li>No identity change without owner approval.</li>
+      </ul>
+    </section>
+
+    <main id="messages" class="messages" role="log" aria-live="polite" aria-label="Conversation"></main>
+
+    <div class="composer-wrap">
+      <div class="chips" role="group" aria-label="Try a sample message">
+        <button type="button" data-sample="Hello">Hello</button>
+        <button type="button" data-sample="Who are you?">Who are you?</button>
+        <button type="button" data-sample="What can you do?">What can you do?</button>
+      </div>
+      <form id="composer" class="composer">
+        <label class="sr-only" for="msgInput">Message M.A.Y.A.</label>
+        <input id="msgInput" type="text" autocomplete="off" maxlength="2000"
+               placeholder="Message M.A.Y.A. (simulated replies)" />
+        <button type="submit" id="sendBtn">Send</button>
+      </form>
+      <p class="footnote">Alpha test build — disposable, for synthetic testing only. History is kept in this browser only, under the single Alpha conversation key.</p>
+    </div>
+
+    <script>
+      'use strict';
+
+      /* ============================================================
+         M.A.Y.A. Alpha 0.1 — Milestone 1 (disposable)
+         Public test copy, prepared for the maya-alpha-0-1-test
+         repository: the owner's name is removed, and a provisional
+         identity disclosure is added in the Identity panel. Source:
+         the M1 disposable file (SHA-256 0dd6d69a…); this copy is not
+         the source file and the source was not modified.
+         A browser-side chat interface with a SIMULATED reply engine.
+         No model is connected. No network activity of any kind.
+         The only browser storage key this page ever touches is
+         STORAGE_KEY below.
+         ============================================================ */
+
+      var STORAGE_KEY = 'maya-alpha-conversation-v0.1';
+
+      /* Test-only surface: a harness may set __forceFailure to true
+         to make the simulated adapter throw. */
+      window.MayaAlpha = { __forceFailure: false, __key: STORAGE_KEY };
+
+      /* ---------- Identity configuration (static, read-only) ----------
+         Kept separate from the reply engine. Verified wording comes from
+         A3-A6 v1.4; purpose and personality guidance are PROVISIONAL
+         proposals with no owner-approved wording on file. The panel in
+         the page renders this same material. Public test copy: the
+         owner's name is removed, so the Human Agency principle is
+         adapted (see its status) and the panel carries a disclosure. */
+      var IDENTITY_CONFIG = {
+        display_name: 'M.A.Y.A.',
+        full_name: 'Multimodal Artificial Yielding Agent',
+        purpose: {
+          status: 'PROVISIONAL',
+          text: "To be a personal assistant that helps its owner think, remember, and act — under the owner's authority at all times."
+        },
+        personality_guidance: {
+          status: 'PROVISIONAL',
+          text: 'Warm, direct, and concise. Asks one clear question at a time when something is ambiguous. Never pretends to know what it does not.'
+        },
+        principles: [
+          { name: 'Core Sovereignty', status: 'VERIFIED — A3-A6 v1.4', text: 'Identity, continuity, memory, and foundational capability live in the Core. No external provider may become a dependency for any of them.' },
+          { name: 'Independent Verification', status: 'VERIFIED — A3-A6 v1.4', text: "Every external result is checked by M.A.Y.A. before use. A provider's claim of success is not verification." },
+          { name: 'Human Agency', status: 'ADAPTED — A3-A6 v1.4 wording, owner name removed for the public copy', text: 'The owner authorises consequential decisions. Systems propose; the owner decides.' },
+          { name: 'Privacy by Design', status: 'VERIFIED — A3-A6 v1.4', text: 'No memory access by default. Disclosure is per-task and per-record, minimum necessary.' },
+          { name: 'Modular Intelligence', status: 'VERIFIED — A3-A6 v1.4', text: 'Providers are replaceable modules. Removing any one leaves M.A.Y.A. operable locally.' }
+        ],
+        boundaries: [
+          'No spending.',
+          'No sharing or disclosure of memories.',
+          'No identity change without owner approval.'
+        ]
+      };
+
+      /* ---------- Simulated adapter ----------
+         Adapter boundary: chat(messages) returns a Promise of text.
+         A future milestone may swap this object for a real model
+         connection without changing the rest of the page. This
+         implementation is deterministic, offline, and rule-based. */
+      function simulatedReplyText(messages) {
+        var lastOwner = '';
+        for (var i = messages.length - 1; i >= 0; i--) {
+          if (messages[i].role === 'owner') { lastOwner = messages[i].text; break; }
+        }
+        var t = lastOwner.toLowerCase().trim();
+
+        var isGreeting = /^(hi|hello|hey|good morning|good afternoon|good evening|yo)\b/.test(t);
+        if (isGreeting) {
+          return "Hello. This is a simulated reply — no AI model is connected in this milestone, " +
+            "but the chat interface and saved history are real. Try asking who I am, or what I can do.";
+        }
+        if (t.indexOf('who are you') !== -1 || t.indexOf('your name') !== -1 || t.indexOf('what are you') !== -1) {
+          return "I'm " + IDENTITY_CONFIG.display_name + " — " + IDENTITY_CONFIG.full_name + ". " +
+            "That's my identity configuration, shown in full in the Identity panel. " +
+            "Right now my replies are simulated by fixed rules; I don't have genuine reasoning or any memory beyond the chat history on this page.";
+        }
+        if (t.indexOf('help') !== -1 || t.indexOf('what can you do') !== -1 || t.indexOf('capabilit') !== -1 || t.indexOf('what do you do') !== -1) {
+          return "In this milestone I can: hold a conversation here, save and restore the chat history in this browser, " +
+            "export it as JSON, and clear it with your confirmation. I can't browse, spend, share memories, use tools, " +
+            "or take any action outside this page — and my replies are simulated, not generated by a model.";
+        }
+        var snippet = lastOwner.length > 60 ? lastOwner.slice(0, 60) + '…' : lastOwner;
+        return "Simulated reply: my fixed rules don't have a specific response for \u201C" + snippet + "\u201D, " +
+          "so this is the fallback. I understood it as a message in our stored chat history — nothing more. " +
+          "Ask \u201Cwhat can you do?\u201D to see what this milestone covers.";
+      }
+
+      var ChatAdapter = {
+        chat: function (messages) {
+          return new Promise(function (resolve, reject) {
+            setTimeout(function () {
+              if (window.MayaAlpha && window.MayaAlpha.__forceFailure) {
+                reject(new Error('the simulated adapter was forced to fail for testing (__forceFailure is on)'));
+                return;
+              }
+              try {
+                resolve(simulatedReplyText(messages));
+              } catch (err) {
+                reject(err);
+              }
+            }, 350);
+          });
+        }
+      };
+
+      /* ---------- DOM handles ---------- */
+      var messagesEl = document.getElementById('messages');
+      var formEl = document.getElementById('composer');
+      var inputEl = document.getElementById('msgInput');
+      var sendBtn = document.getElementById('sendBtn');
+      var identityBtn = document.getElementById('identityBtn');
+      var identityPanel = document.getElementById('identityPanel');
+      var exportBtn = document.getElementById('exportBtn');
+      var clearBtn = document.getElementById('clearBtn');
+      var clearConfirmEl = document.getElementById('clearConfirm');
+      var confirmClearBtn = document.getElementById('confirmClearBtn');
+      var cancelClearBtn = document.getElementById('cancelClearBtn');
+      var corruptBanner = document.getElementById('corruptBanner');
+      var corruptDetail = document.getElementById('corruptDetail');
+      var errorBanner = document.getElementById('errorBanner');
+      var errorText = document.getElementById('errorText');
+      var errorDismiss = document.getElementById('errorDismiss');
+      var statusLine = document.getElementById('statusLine');
+
+      /* ---------- History state ---------- */
+      var messages = [];
+      var corrupt = false;        /* true when stored history is malformed/unreadable */
+      var corruptReason = '';
+      var pending = false;        /* a simulated reply is in flight */
+      var idCounter = 0;
+      var generation = 0;         /* incremented on every confirmed clear; a reply from an older generation is discarded, never re-saved */
+      var lastSavedLength = 0;    /* messages.length at the last successful save */
+      var unsavedIds = {};        /* message id -> true, for messages shown in-session but not yet persisted */
+
+      function makeId() {
+        idCounter += 1;
+        return 'm-' + Date.now().toString(36) + '-' + idCounter + '-' + Math.floor(Math.random() * 1e6).toString(36);
+      }
+
+      function isValidMessage(m) {
+        if (!m || typeof m !== 'object' || Array.isArray(m)) return false;
+        if (m.role !== 'owner' && m.role !== 'maya') return false;
+        if (typeof m.text !== 'string') return false;
+        var tsOk = (typeof m.ts === 'number' && isFinite(m.ts)) ||
+                   (typeof m.ts === 'string' && !isNaN(Date.parse(m.ts)));
+        if (!tsOk) return false;
+        if (m.id !== undefined && typeof m.id !== 'string') return false;
+        return true;
+      }
+
+      function isValidHistory(data) {
+        if (!Array.isArray(data)) return false;
+        for (var i = 0; i < data.length; i++) {
+          if (!isValidMessage(data[i])) return false;
+        }
+        return true;
+      }
+
+      /* Load and validate stored history.
+         Missing key  -> empty conversation (fine).
+         Anything else unreadable or wrong-shaped -> corruption state:
+         writes stay blocked and the raw value is never overwritten. */
+      function loadHistory() {
+        var raw;
+        try {
+          raw = localStorage.getItem(STORAGE_KEY);
+        } catch (err) {
+          corrupt = true;
+          corruptReason = 'Reading saved history failed: ' + err.message;
+          messages = [];
+          return;
+        }
+        if (raw === null) {
+          messages = [];
+          return;
+        }
+        var parsed;
+        try {
+          parsed = JSON.parse(raw);
+        } catch (err) {
+          corrupt = true;
+          corruptReason = 'Stored history is not valid JSON (' + err.message + ').';
+          messages = [];
+          return;
+        }
+        if (!isValidHistory(parsed)) {
+          corrupt = true;
+          corruptReason = 'Stored history has an unexpected shape and failed validation.';
+          messages = [];
+          return;
+        }
+        messages = parsed;
+        lastSavedLength = messages.length;
+        unsavedIds = {};
+      }
+
+      /* Persist history. Returns true only when the write succeeded.
+         Never writes while corrupted; never claims success on failure.
+         On success every current message is persisted; on failure the
+         messages added since the last successful save are marked unsaved. */
+      function markUnsavedSinceLastSave() {
+        for (var i = lastSavedLength; i < messages.length; i++) unsavedIds[messages[i].id] = true;
+      }
+      function saveHistory() {
+        if (corrupt) return false;
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+          lastSavedLength = messages.length;
+          unsavedIds = {};
+          return true;
+        } catch (err) {
+          markUnsavedSinceLastSave();
+          showError('History could not be saved (' + err.message + '). Your messages are still shown here, but they may not be there after a reload.');
+          return false;
+        }
+      }
+
+      /* ---------- Rendering (text only, via textContent) ---------- */
+      function formatTime(ts) {
+        var d = new Date(ts);
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      }
+
+      function buildBubble(msg) {
+        var row = document.createElement('div');
+        row.className = 'row ' + (msg.role === 'owner' ? 'row-owner' : 'row-maya');
+
+        var bubble = document.createElement('div');
+        bubble.className = 'bubble ' + (msg.role === 'owner' ? 'bubble-owner' : 'bubble-maya');
+
+        var head = document.createElement('div');
+        head.className = 'bubble-head';
+
+        var speaker = document.createElement('span');
+        speaker.className = 'speaker';
+        speaker.textContent = msg.role === 'owner' ? 'Owner' : 'M.A.Y.A.';
+        head.appendChild(speaker);
+
+        if (msg.role === 'maya') {
+          var sim = document.createElement('span');
+          sim.className = 'badge-sim-sm';
+          sim.textContent = 'SIMULATED';
+          head.appendChild(sim);
+        }
+
+        if (unsavedIds[msg.id]) {
+          var unsaved = document.createElement('span');
+          unsaved.className = 'badge-unsaved';
+          unsaved.textContent = 'NOT SAVED';
+          head.appendChild(unsaved);
+        }
+
+        var time = document.createElement('time');
+        time.textContent = formatTime(msg.ts);
+        var d = new Date(msg.ts);
+        if (!isNaN(d.getTime())) time.setAttribute('datetime', d.toISOString());
+        head.appendChild(time);
+
+        var body = document.createElement('p');
+        body.className = 'bubble-text';
+        body.textContent = msg.text;
+
+        bubble.appendChild(head);
+        bubble.appendChild(body);
+        row.appendChild(bubble);
+        return row;
+      }
+
+      var typingRow = null;
+      function showTyping() {
+        typingRow = document.createElement('div');
+        typingRow.className = 'row row-maya';
+        var bubble = document.createElement('div');
+        bubble.className = 'bubble bubble-maya typing';
+        var head = document.createElement('div');
+        head.className = 'bubble-head';
+        var speaker = document.createElement('span');
+        speaker.className = 'speaker';
+        speaker.textContent = 'M.A.Y.A.';
+        var sim = document.createElement('span');
+        sim.className = 'badge-sim-sm';
+        sim.textContent = 'SIMULATED';
+        head.appendChild(speaker);
+        head.appendChild(sim);
+        var body = document.createElement('p');
+        body.className = 'bubble-text';
+        body.appendChild(document.createTextNode('Preparing a simulated reply'));
+        var dots = document.createElement('span');
+        dots.className = 'dots';
+        for (var i = 0; i < 3; i++) {
+          var s = document.createElement('span');
+          s.textContent = '.';
+          dots.appendChild(s);
+        }
+        body.appendChild(dots);
+        bubble.appendChild(head);
+        bubble.appendChild(body);
+        typingRow.appendChild(bubble);
+        messagesEl.appendChild(typingRow);
+        scrollToBottom();
+      }
+      function hideTyping() {
+        if (typingRow && typingRow.parentNode) typingRow.parentNode.removeChild(typingRow);
+        typingRow = null;
+      }
+
+      function renderMessages() {
+        messagesEl.replaceChildren();
+        if (messages.length === 0) {
+          var empty = document.createElement('div');
+          empty.className = 'empty-state';
+          var big = document.createElement('div');
+          big.className = 'big';
+          big.textContent = corrupt ? 'Saved history could not be loaded.' : 'No messages yet.';
+          var small = document.createElement('div');
+          small.textContent = corrupt
+            ? 'The stored data was left untouched. You can still chat below, but nothing will be saved.'
+            : 'Say hello below, or use a sample message, to try the simulated chat.';
+          empty.appendChild(big);
+          empty.appendChild(small);
+          messagesEl.appendChild(empty);
+        } else {
+          for (var i = 0; i < messages.length; i++) {
+            messagesEl.appendChild(buildBubble(messages[i]));
+          }
+        }
+        scrollToBottom();
+        updateControls();
+      }
+
+      function scrollToBottom() {
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+
+      function updateControls() {
+        var has = messages.length > 0;
+        clearBtn.disabled = corrupt || !has || pending;
+        exportBtn.disabled = corrupt || !has;
+        sendBtn.disabled = pending;
+      }
+
+      /* ---------- Feedback ---------- */
+      function showError(text) {
+        errorText.textContent = text;
+        errorBanner.hidden = false;
+      }
+      function hideError() {
+        errorBanner.hidden = true;
+        errorText.textContent = '';
+      }
+      function setStatus(text) {
+        statusLine.textContent = text;
+      }
+
+      /* ---------- Sending ---------- */
+      function sendText(rawText) {
+        if (pending) return; /* a reply is already in flight — ignore repeats */
+        var text = (rawText || '').trim();
+        if (!text) return;
+        hideError();
+
+        var ownerMsg = { id: makeId(), role: 'owner', text: text, ts: new Date().toISOString() };
+        messages.push(ownerMsg);
+        if (corrupt) {
+          unsavedIds[ownerMsg.id] = true;
+          showError('History saving is paused because the stored history could not be read, so this message will not be saved. The stored data has been left unchanged.');
+        } else {
+          saveHistory();
+        }
+        renderMessages();
+
+        pending = true;
+        var gen = generation;
+        updateControls();
+        showTyping();
+
+        ChatAdapter.chat(messages.slice()).then(function (replyText) {
+          if (gen !== generation) {
+            /* History was cleared while this reply was in flight: discard
+               it entirely. It must never be shown or re-saved. */
+            pending = false;
+            hideTyping();
+            updateControls();
+            inputEl.focus();
+            return;
+          }
+          pending = false;
+          hideTyping();
+          var mayaMsg = { id: makeId(), role: 'maya', text: String(replyText), ts: new Date().toISOString() };
+          messages.push(mayaMsg);
+          if (corrupt) { unsavedIds[mayaMsg.id] = true; }
+          else { saveHistory(); }
+          renderMessages();
+          inputEl.focus();
+        }).catch(function (err) {
+          if (gen !== generation) {
+            pending = false;
+            hideTyping();
+            updateControls();
+            inputEl.focus();
+            return;
+          }
+          pending = false;
+          hideTyping();
+          updateControls();
+          /* No fabricated reply is added, and stored history is left as it was. */
+          showError('The simulated reply failed: ' + (err && err.message ? err.message : 'unknown error') +
+            '. No M.A.Y.A. reply was added, and your saved history was not changed by the failure.');
+          inputEl.focus();
+        });
+      }
+
+      formEl.addEventListener('submit', function (event) {
+        event.preventDefault();
+        if (pending) return;
+        var value = inputEl.value;
+        inputEl.value = '';
+        sendText(value);
+      });
+
+      var chips = document.querySelectorAll('[data-sample]');
+      for (var c = 0; c < chips.length; c++) {
+        chips[c].addEventListener('click', function () {
+          sendText(this.getAttribute('data-sample'));
+        });
+      }
+
+      /* ---------- Identity panel toggle ---------- */
+      identityBtn.addEventListener('click', function () {
+        var willShow = identityPanel.hidden;
+        identityPanel.hidden = !willShow;
+        identityBtn.setAttribute('aria-expanded', willShow ? 'true' : 'false');
+        identityBtn.textContent = willShow ? 'Hide identity' : 'Identity';
+      });
+
+      /* ---------- Export ---------- */
+      exportBtn.addEventListener('click', function () {
+        if (corrupt) {
+          showError('Export is unavailable: the stored history could not be read.');
+          return;
+        }
+        var payload = JSON.stringify(messages.map(function (m) {
+          return { id: m.id, role: m.role, text: m.text, ts: m.ts, persisted: !unsavedIds[m.id] };
+        }), null, 2);
+        var blob = new Blob([payload], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement('a');
+        link.href = url;
+        link.download = 'maya-alpha-history.json';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        var unsavedCount = messages.filter(function (m) { return unsavedIds[m.id]; }).length;
+        setStatus('History exported as JSON (' + messages.length + ' messages' + (unsavedCount ? ', ' + unsavedCount + ' not yet saved' : '') + ').');
+      });
+
+      /* ---------- Clear (explicit in-page confirmation) ---------- */
+      clearBtn.addEventListener('click', function () {
+        if (corrupt || messages.length === 0) return;
+        clearConfirmEl.hidden = false;
+        cancelClearBtn.focus();
+      });
+      cancelClearBtn.addEventListener('click', function () {
+        clearConfirmEl.hidden = true;
+        setStatus('Clear cancelled — history unchanged.');
+        clearBtn.focus();
+      });
+      confirmClearBtn.addEventListener('click', function () {
+        clearConfirmEl.hidden = true;
+        if (corrupt) return; /* never delete data we could not read */
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch (err) {
+          showError('History could not be cleared (' + err.message + '). Nothing was changed.');
+          return;
+        }
+        /* The clear succeeded: retire this generation so any reply still
+           in flight from before the clear is discarded, never re-saved. */
+        generation++;
+        messages = [];
+        lastSavedLength = 0;
+        unsavedIds = {};
+        renderMessages();
+        setStatus('History cleared.');
+        inputEl.focus();
+      });
+
+      errorDismiss.addEventListener('click', hideError);
+
+      /* ---------- Init ---------- */
+      loadHistory();
+      if (corrupt) {
+        corruptBanner.hidden = false;
+        corruptDetail.textContent = 'Detail: ' + corruptReason;
+      }
+      renderMessages();
+      inputEl.focus();
+    </script>
+  </body>
+</html>
