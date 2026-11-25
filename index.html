@@ -635,6 +635,27 @@
         if (status === 500 && code === 'proxy_not_configured') {
           return 'The proxy is not set up yet (no model key configured). Live mode is unavailable.';
         }
+        if (status === 502 && code === 'upstream_auth_failed') {
+          return 'The proxy\'s model key was rejected. Check the Worker secret.';
+        }
+        if (status === 502 && code === 'upstream_permission_denied') {
+          return 'The proxy does not have permission to use this model. Check the project in Google AI Studio.';
+        }
+        if (status === 502 && code === 'upstream_overloaded') {
+          return 'Gemini is overloaded right now. Wait a little and try again.';
+        }
+        if (status === 502 && code === 'upstream_timeout') {
+          return 'Gemini took too long to reply. Try again.';
+        }
+        if (status === 502 && code === 'upstream_unreachable') {
+          return 'The proxy could not reach Gemini. Check the connection and try again.';
+        }
+        if (status === 502 && code === 'upstream_bad_json') {
+          return 'Gemini returned a reply the proxy could not read. Try again.';
+        }
+        if (status === 502 && code === 'upstream_empty_reply') {
+          return 'Gemini returned an empty reply. Try again.';
+        }
         if (status === 502) {
           return 'Gemini did not return a usable reply. Try again.';
         }
