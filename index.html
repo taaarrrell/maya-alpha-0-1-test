@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="dark" />
     <link rel="icon" href="data:," />
-    <title>Maya Alpha 0.1 M1 Disposable</title>
+    <title>Maya Alpha 0.1 M3 Slice 2A Disposable</title>
     <style>
       :root {
         --bg: #0d1117;
@@ -84,12 +84,12 @@
         white-space: nowrap;
       }
       .brand-sub { color: var(--muted); font-size: 0.85rem; margin-top: 0.15rem; }
-      .badge-sim {
+      .badge-live {
         flex: none;
         font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
-        color: var(--gold);
-        border: 1px solid var(--gold-dim);
-        background: rgba(240, 195, 92, 0.08);
+        color: var(--green);
+        border: 1px solid #2f5c44;
+        background: rgba(127, 214, 164, 0.08);
         border-radius: 6px; padding: 0.3rem 0.5rem; margin-top: 0.2rem;
       }
 
@@ -101,13 +101,15 @@
       }
       .toolbar button { min-height: 40px; font-size: 0.9rem; }
 
-      .notice-sim {
+      .notice-mode {
         padding: 0.55rem 1rem;
         background: rgba(240, 195, 92, 0.07);
         border-bottom: 1px solid var(--line-soft);
         color: var(--muted); font-size: 0.88rem;
       }
-      .notice-sim strong { color: var(--gold); font-weight: 600; }
+      .notice-mode strong { color: var(--gold); font-weight: 600; }
+      .notice-mode.live { background: rgba(127, 214, 164, 0.06); }
+      .notice-mode.live strong { color: var(--green); }
 
       /* ---------- Banners ---------- */
       .banner {
@@ -210,9 +212,9 @@
       .bubble-maya .bubble-head { color: var(--muted); }
       .speaker { font-weight: 700; letter-spacing: 0.03em; }
       .bubble-head time { opacity: 0.75; }
-      .badge-sim-sm {
+      .badge-live-sm {
         font-size: 0.64rem; font-weight: 700; letter-spacing: 0.07em;
-        color: var(--gold); border: 1px solid var(--gold-dim);
+        color: var(--green); border: 1px solid #2f5c44;
         border-radius: 4px; padding: 0.08rem 0.34rem;
       }
       .badge-unsaved {
@@ -276,20 +278,21 @@
     <header class="topbar">
       <div>
         <div class="brand-name">M.A.Y.A.<span class="alpha">Alpha 0.1</span></div>
-        <div class="brand-sub">Milestone 1 · Disposable conversational interface</div>
+        <div class="brand-sub">Milestone 3 · Slice 2A · Disposable conversational interface</div>
       </div>
-      <span class="badge-sim" aria-label="All responses are simulated">SIMULATED</span>
+      <span id="modeBadge" class="badge-sim" aria-label="All responses are simulated">SIMULATED</span>
     </header>
 
     <div class="toolbar" role="group" aria-label="Conversation tools">
       <button type="button" id="identityBtn" aria-expanded="false" aria-controls="identityPanel">Identity</button>
+      <button type="button" id="modeBtn">Mode: Simulated</button>
       <button type="button" id="exportBtn">Export history</button>
       <button type="button" id="clearBtn">Clear history</button>
     </div>
 
-    <p class="notice-sim">
-      <strong>Simulated responses.</strong> No AI model is connected in this milestone.
-      Replies come from fixed offline rules so the chat experience and history handling can be tested.
+    <p class="notice-mode" id="modeNotice">
+      <strong id="modeNoticeTitle">Simulated responses.</strong>
+      <span id="modeNoticeBody">No AI model is connected in this milestone. Replies come from fixed offline rules so the chat experience and history handling can be tested.</span>
     </p>
 
     <div id="corruptBanner" class="banner banner-danger" role="alert" hidden>
@@ -380,30 +383,59 @@
                placeholder="Message M.A.Y.A. (simulated replies)" />
         <button type="submit" id="sendBtn">Send</button>
       </form>
-      <p class="footnote">Alpha test build — disposable, for synthetic testing only. History is kept in this browser only, under the single Alpha conversation key.</p>
+      <p class="footnote">Alpha test build — disposable, for synthetic testing only. History is kept in this browser only. The Live conversation-chain id is stored separately and is dropped when history is cleared.</p>
     </div>
 
     <script>
       'use strict';
 
       /* ============================================================
-         M.A.Y.A. Alpha 0.1 — Milestone 1 (disposable)
+         M.A.Y.A. Alpha 0.1 — Milestone 3, Slice 2A (disposable)
          Public test copy, prepared for the maya-alpha-0-1-test
          repository: the owner's name is removed, and a provisional
          identity disclosure is added in the Identity panel. Source:
-         the M1 disposable file (SHA-256 0dd6d69a…); this copy is not
-         the source file and the source was not modified.
-         A browser-side chat interface with a SIMULATED reply engine.
-         No model is connected. No network activity of any kind.
-         The only browser storage key this page ever touches is
-         STORAGE_KEY below.
+         the Slice 2 public copy (SHA-256 886b80bf…); this file is not
+         that source file and the source was not modified.
+         A browser-side chat interface with two reply engines behind
+         one ChatAdapter boundary:
+         - Simulated: fixed offline rules, no network, the default.
+         - Live: POSTs to the deployed Cloudflare Worker proxy, which
+           calls Gemini. Available only when a Worker address is set
+           in CONFIG below and the user explicitly selects Live mode.
+           A live failure is shown as an error; it NEVER falls back
+           to a simulated reply.
+         No model key or Cloudflare credential is in this file, and
+         none is ever sent: the page holds no key, and the Worker
+         enforces its own origin allowlist and request limits.
+         Browser storage: exactly two keys, STORAGE_KEY (history) and
+         CHAIN_KEY (the Live conversation-chain id). Both are dropped
+         when history is cleared.
          ============================================================ */
 
       var STORAGE_KEY = 'maya-alpha-conversation-v0.1';
+      var CHAIN_KEY = 'maya-alpha-chain-v0.1';
+
+      /* Live connection configuration.
+         WORKER_URL: the deployed Worker address. Leave it empty until
+         the Worker is deployed — while it is empty, Live mode is
+         unavailable and the page stays in Simulated mode. Set it to
+         the full Worker address shown by the deploy step; do not
+         invent one. The address is assigned when the Worker is
+         created, so it cannot be filled in before deployment.
+         REQUEST_TIMEOUT_MS: how long the page waits for the Worker
+         before giving up. The Worker itself stops waiting after
+         30 seconds, so this is set slightly longer. */
+      var CONFIG = {
+        WORKER_URL: 'https://maya-alpha-m3-proxy.macman2028.workers.dev',
+        REQUEST_TIMEOUT_MS: 35000
+      };
 
       /* Test-only surface: a harness may set __forceFailure to true
-         to make the simulated adapter throw. */
-      window.MayaAlpha = { __forceFailure: false, __key: STORAGE_KEY };
+         to make the simulated adapter throw, may read or set
+         __config (WORKER_URL, REQUEST_TIMEOUT_MS) to point the Live
+         adapter at a mock endpoint, and may read the current mode
+         and chain id. Nothing here carries credentials. */
+      window.MayaAlpha = { __forceFailure: false, __key: STORAGE_KEY, __chainKey: CHAIN_KEY, __config: CONFIG };
 
       /* ---------- Identity configuration (static, read-only) ----------
          Kept separate from the reply engine. Verified wording comes from
@@ -437,11 +469,95 @@
         ]
       };
 
+      /* ---------- Conversation chain (Live mode) ----------
+         The upstream conversation is chained by the interaction id the
+         Worker returns. The id is stored in its own key so it survives
+         a reload, and it is dropped whenever the conversation is
+         cleared. A malformed chain value is treated as "no chain" — it
+         never blocks chatting and never touches the history key. */
+      var ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9 _-]{0,255}$/;
+      var chainId = null; /* in-memory copy of the stored chain id */
+
+      function isValidChainId(v) {
+        return typeof v === 'string' && v !== '' && ID_PATTERN.test(v);
+      }
+      function loadChainId() {
+        var raw;
+        try {
+          raw = localStorage.getItem(CHAIN_KEY);
+        } catch (err) {
+          chainId = null;
+          return;
+        }
+        if (raw === null) { chainId = null; return; }
+        var parsed;
+        try {
+          parsed = JSON.parse(raw);
+        } catch (err) {
+          chainId = null;
+          return;
+        }
+        if (!parsed || typeof parsed !== 'object' || !isValidChainId(parsed.previous_interaction_id)) {
+          chainId = null;
+          return;
+        }
+        chainId = parsed.previous_interaction_id;
+      }
+      function saveChainId(id) {
+        if (!isValidChainId(id)) return;
+        chainId = id;
+        try {
+          localStorage.setItem(CHAIN_KEY, JSON.stringify({ previous_interaction_id: id, updated_at: new Date().toISOString() }));
+        } catch (err) {
+          /* A chain id that cannot be stored is kept in memory for
+             this session; the conversation still works, and the next
+             reply may simply start a new chain. Never touch the
+             history key here. */
+        }
+      }
+      function clearChainId() {
+        chainId = null;
+        try {
+          localStorage.removeItem(CHAIN_KEY);
+        } catch (err) {
+          /* The in-memory id is already cleared, and the adapter
+             sends the in-memory value, so a stale stored value is
+             inert until the next reload. */
+        }
+      }
+
+      /* Build the identity instruction the Worker forwards to the
+         model. Built from IDENTITY_CONFIG at request time, so the
+         reply engine always sees the same identity the panel shows.
+         Kept short: the Worker accepts at most 4000 characters.
+         Contains no owner name, no personal data, and no credentials. */
+      function buildSystemInstruction() {
+        var lines = [];
+        lines.push('You are ' + IDENTITY_CONFIG.display_name + ' — ' + IDENTITY_CONFIG.full_name + '.');
+        lines.push('Purpose: ' + IDENTITY_CONFIG.purpose.text);
+        lines.push('Personality: ' + IDENTITY_CONFIG.personality_guidance.text);
+        lines.push('Principles: ' + IDENTITY_CONFIG.principles.map(function (p) { return p.name + ': ' + p.text; }).join(' '));
+        lines.push('Boundaries: ' + IDENTITY_CONFIG.boundaries.join(' '));
+        return lines.join('\n');
+      }
+
+      /* ---------- Reply adapters ----------
+         Adapter boundary: chat(messages) returns a Promise of
+         { text, mode, interactionId, remaining }.
+         - text: the reply to render (rendered as text only, never as
+           markup — upstream text is untrusted).
+         - mode: 'simulated' or 'live' — the badge the reply carries.
+         - interactionId: the upstream conversation-chain id, or null.
+         - remaining: the Worker's remaining daily replies, or null.
+         The simulated adapter is the offline fallback. It is used
+         only when the user explicitly selects Simulated mode. A live
+         failure NEVER falls back to a simulated reply: the error is
+         shown and nothing is added. */
+
       /* ---------- Simulated adapter ----------
-         Adapter boundary: chat(messages) returns a Promise of text.
-         A future milestone may swap this object for a real model
-         connection without changing the rest of the page. This
-         implementation is deterministic, offline, and rule-based. */
+         Deterministic, offline, rule-based. Unchanged from M1 except
+         that it now returns the same reply object shape as the Live
+         adapter. */
       function simulatedReplyText(messages) {
         var lastOwner = '';
         for (var i = messages.length - 1; i >= 0; i--) {
@@ -470,7 +586,7 @@
           "Ask \u201Cwhat can you do?\u201D to see what this milestone covers.";
       }
 
-      var ChatAdapter = {
+      var SimulatedAdapter = {
         chat: function (messages) {
           return new Promise(function (resolve, reject) {
             setTimeout(function () {
@@ -479,12 +595,155 @@
                 return;
               }
               try {
-                resolve(simulatedReplyText(messages));
+                resolve({ text: simulatedReplyText(messages), mode: 'simulated', interactionId: null, remaining: null });
               } catch (err) {
                 reject(err);
               }
             }, 350);
           });
+        }
+      };
+
+      /* ---------- Live adapter ----------
+         POSTs the last owner message to the deployed Worker. The
+         Worker only forwards the last user message upstream — the
+         conversation state lives server-side and is chained with
+         previous_interaction_id — so the request carries exactly one
+         message, the system instruction, and the chain id when one
+         exists. Sending the whole history would be wasted bytes and
+         could exceed the Worker's 16 KB body limit on long
+         conversations. No credentials are sent: the page holds no
+         key, and the Worker enforces its own origin allowlist and
+         request limits. No retries: a request that fails must never
+         silently consume more daily quota. */
+      var liveController = null; /* AbortController for the in-flight live request, if any */
+
+      function liveErrorMessage(status, data) {
+        var code = (data && typeof data.error === 'string') ? data.error : '';
+        if (status === 429 && code === 'daily_limit_reached') {
+          return 'Daily limit reached — the proxy allows 20 Gemini replies per day. Try again tomorrow.';
+        }
+        if (status === 429 && code === 'rate_limited') {
+          return 'Too many requests right now (per-minute limit). Wait a minute and try again.';
+        }
+        if (status === 429 && code === 'upstream_rate_limited') {
+          return 'Gemini is rate-limited right now. Wait a minute and try again.';
+        }
+        if (status === 403) {
+          return 'This page is not allowed to use the proxy (origin not allowed). Check the Worker configuration.';
+        }
+        if (status === 500 && code === 'proxy_not_configured') {
+          return 'The proxy is not set up yet (no model key configured). Live mode is unavailable.';
+        }
+        if (status === 502) {
+          return 'Gemini did not return a usable reply. Try again.';
+        }
+        if (status === 503) {
+          return 'The proxy is temporarily unavailable. Try again later.';
+        }
+        if (status === 400) {
+          return 'The proxy rejected the request. Try again.';
+        }
+        if (status === 413) {
+          return 'The request was too large for the proxy. Try a shorter message.';
+        }
+        return 'The proxy returned an error (status ' + status + '). Try again.';
+      }
+
+      var LiveAdapter = {
+        chat: function (messages) {
+          return new Promise(function (resolve, reject) {
+            var lastOwner = '';
+            for (var i = messages.length - 1; i >= 0; i--) {
+              if (messages[i].role === 'owner') { lastOwner = messages[i].text; break; }
+            }
+            if (!lastOwner) { reject(new Error('no owner message to send')); return; }
+
+            var body = {
+              messages: [{ role: 'user', text: lastOwner }],
+              system_instruction: buildSystemInstruction()
+            };
+            if (chainId) body.previous_interaction_id = chainId;
+
+            var controller = null;
+            try { controller = new AbortController(); } catch (err) { controller = null; }
+            liveController = controller;
+            var timedOut = false;
+            var settled = false;
+            function done(fn) {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timer);
+              liveController = null;
+              fn();
+            }
+            var timer = setTimeout(function () {
+              timedOut = true;
+              if (controller) { try { controller.abort(); } catch (err) {} }
+              done(function () {
+                reject(new Error('The request timed out after ' + CONFIG.REQUEST_TIMEOUT_MS + ' ms. The proxy may still have counted this request against the daily limit. Try again.'));
+              });
+            }, CONFIG.REQUEST_TIMEOUT_MS);
+
+            var options = {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body)
+            };
+            if (controller) options.signal = controller.signal;
+
+            var fetchPromise;
+            try {
+              fetchPromise = fetch(CONFIG.WORKER_URL + '/chat', options);
+            } catch (err) {
+              done(function () { reject(new Error('Could not reach the proxy (' + (err && err.message ? err.message : 'network error') + '). Check the connection and try again.')); });
+              return;
+            }
+            fetchPromise.then(function (res) {
+              if (timedOut) return;
+              if (!res || typeof res.status !== 'number') {
+                done(function () { reject(new Error('The proxy returned a reply that could not be read. Try again.')); });
+                return;
+              }
+              var status = res.status;
+              var parse = (res.json && typeof res.json === 'function')
+                ? res.json()
+                : Promise.reject(new Error('unreadable'));
+              parse.then(function (data) {
+                if (timedOut) return;
+                if (status >= 200 && status < 300) {
+                  if (!data || typeof data.text !== 'string' || data.text === '') {
+                    done(function () { reject(new Error('The proxy returned a reply that could not be read (missing reply text). Try again.')); });
+                    return;
+                  }
+                  var iid = (data && typeof data.interaction_id === 'string' && isValidChainId(data.interaction_id)) ? data.interaction_id : null;
+                  var remaining = (data && typeof data.remaining === 'number') ? data.remaining : null;
+                  done(function () { resolve({ text: data.text, mode: 'live', interactionId: iid, remaining: remaining }); });
+                  return;
+                }
+                done(function () { reject(new Error(liveErrorMessage(status, data))); });
+              }).catch(function () {
+                if (timedOut) return;
+                done(function () { reject(new Error('The proxy returned a reply that could not be read (not valid JSON). Try again.')); });
+              });
+            }).catch(function (err) {
+              if (timedOut) return;
+              if (err && err.name === 'AbortError') {
+                done(function () { reject(new Error('The request was cancelled.')); });
+                return;
+              }
+              done(function () { reject(new Error('Could not reach the proxy (' + (err && err.message ? err.message : 'network error') + '). Check the connection and try again.')); });
+            });
+          });
+        }
+      };
+
+      /* The replaceable boundary: Simulated by default, Live only when
+         the user explicitly selects it. */
+      var ChatAdapter = {
+        chat: function (messages) {
+          if (mode === 'live') return LiveAdapter.chat(messages);
+          return SimulatedAdapter.chat(messages);
         }
       };
 
@@ -495,6 +754,11 @@
       var sendBtn = document.getElementById('sendBtn');
       var identityBtn = document.getElementById('identityBtn');
       var identityPanel = document.getElementById('identityPanel');
+      var modeBtn = document.getElementById('modeBtn');
+      var modeBadge = document.getElementById('modeBadge');
+      var modeNotice = document.getElementById('modeNotice');
+      var modeNoticeTitle = document.getElementById('modeNoticeTitle');
+      var modeNoticeBody = document.getElementById('modeNoticeBody');
       var exportBtn = document.getElementById('exportBtn');
       var clearBtn = document.getElementById('clearBtn');
       var clearConfirmEl = document.getElementById('clearConfirm');
@@ -506,6 +770,51 @@
       var errorText = document.getElementById('errorText');
       var errorDismiss = document.getElementById('errorDismiss');
       var statusLine = document.getElementById('statusLine');
+
+      /* ---------- Mode: Simulated vs Live ----------
+         Default is Simulated, every load. Live is only available when
+         a Worker address is configured, and only when the user
+         explicitly selects it. Switching mode never sends anything
+         and never falls back silently: a live failure is shown as an
+         error, and the conversation continues in whichever mode the
+         user chose. */
+      var mode = 'simulated';
+
+      function updateModeUI() {
+        var live = mode === 'live';
+        modeBadge.textContent = live ? 'LIVE' : 'SIMULATED';
+        modeBadge.className = live ? 'badge-live' : 'badge-sim';
+        modeBadge.setAttribute('aria-label', live ? 'Replies come from Gemini through the configured proxy' : 'All responses are simulated');
+        modeBtn.textContent = live ? 'Mode: Live (Gemini)' : 'Mode: Simulated';
+        modeNotice.className = live ? 'notice-mode live' : 'notice-mode';
+        msgInput.placeholder = live ? 'Message M.A.Y.A. (live Gemini replies)' : 'Message M.A.Y.A. (simulated replies)';
+        modeNoticeTitle.textContent = live ? 'Live replies.' : 'Simulated responses.';
+        modeNoticeBody.textContent = live
+          ? 'Messages go to the configured Worker proxy, which calls Gemini. Replies are generated by a model and may be wrong; nothing is sent except your message and the conversation chain id.'
+          : 'No AI model is connected in this milestone. Replies come from fixed offline rules so the chat experience and history handling can be tested.';
+      }
+      function setMode(next) {
+        if (pending) return false; /* do not switch while a reply is in flight */
+        if (next === 'live') {
+          if (!CONFIG.WORKER_URL) {
+            showError('Live mode needs a Worker address. Set WORKER_URL in this file to the deployed Worker address, then reload the page. Staying in Simulated mode.');
+            return false;
+          }
+          mode = 'live';
+        } else if (next === 'simulated') {
+          mode = 'simulated';
+        } else {
+          return false;
+        }
+        updateModeUI();
+        setStatus(mode === 'live' ? 'Live mode: replies come from Gemini through the configured proxy.' : 'Simulated mode: replies are generated by fixed offline rules.');
+        return true;
+      }
+
+      /* Test-only mode access (the page's own controls use setMode). */
+      window.MayaAlpha.__getMode = function () { return mode; };
+      window.MayaAlpha.__setMode = function (m) { return setMode(m); };
+      window.MayaAlpha.__getChainId = function () { return chainId; };
 
       /* ---------- History state ---------- */
       var messages = [];
@@ -623,10 +932,10 @@
         head.appendChild(speaker);
 
         if (msg.role === 'maya') {
-          var sim = document.createElement('span');
-          sim.className = 'badge-sim-sm';
-          sim.textContent = 'SIMULATED';
-          head.appendChild(sim);
+          var badge = document.createElement('span');
+          badge.className = msg.mode === 'live' ? 'badge-live-sm' : 'badge-sim-sm';
+          badge.textContent = msg.mode === 'live' ? 'LIVE' : 'SIMULATED';
+          head.appendChild(badge);
         }
 
         if (unsavedIds[msg.id]) {
@@ -664,13 +973,13 @@
         speaker.className = 'speaker';
         speaker.textContent = 'M.A.Y.A.';
         var sim = document.createElement('span');
-        sim.className = 'badge-sim-sm';
-        sim.textContent = 'SIMULATED';
+        sim.className = mode === 'live' ? 'badge-live-sm' : 'badge-sim-sm';
+        sim.textContent = mode === 'live' ? 'LIVE' : 'SIMULATED';
         head.appendChild(speaker);
         head.appendChild(sim);
         var body = document.createElement('p');
         body.className = 'bubble-text';
-        body.appendChild(document.createTextNode('Preparing a simulated reply'));
+        body.appendChild(document.createTextNode(mode === 'live' ? 'Preparing a live reply' : 'Preparing a simulated reply'));
         var dots = document.createElement('span');
         dots.className = 'dots';
         for (var i = 0; i < 3; i++) {
@@ -720,9 +1029,15 @@
 
       function updateControls() {
         var has = messages.length > 0;
-        clearBtn.disabled = corrupt || !has || pending;
+        /* Clear stays available while a reply is in flight: a live
+           request can take up to the request timeout, and the user
+           must be able to abandon it. The confirm handler aborts the
+           request and retires the generation, so a late reply is
+           discarded and never re-saved. */
+        clearBtn.disabled = corrupt || !has;
         exportBtn.disabled = corrupt || !has;
         sendBtn.disabled = pending;
+        modeBtn.disabled = pending;
       }
 
       /* ---------- Feedback ---------- */
@@ -760,7 +1075,7 @@
         updateControls();
         showTyping();
 
-        ChatAdapter.chat(messages.slice()).then(function (replyText) {
+        ChatAdapter.chat(messages.slice()).then(function (reply) {
           if (gen !== generation) {
             /* History was cleared while this reply was in flight: discard
                it entirely. It must never be shown or re-saved. */
@@ -772,8 +1087,14 @@
           }
           pending = false;
           hideTyping();
-          var mayaMsg = { id: makeId(), role: 'maya', text: String(replyText), ts: new Date().toISOString() };
+          var mayaMsg = { id: makeId(), role: 'maya', text: String(reply.text), mode: reply.mode || 'simulated', ts: new Date().toISOString() };
           messages.push(mayaMsg);
+          if (reply.mode === 'live') {
+            if (reply.interactionId) saveChainId(reply.interactionId);
+            if (typeof reply.remaining === 'number') {
+              setStatus('Live reply received. ' + reply.remaining + ' Gemini replies left today.');
+            }
+          }
           if (corrupt) { unsavedIds[mayaMsg.id] = true; }
           else { saveHistory(); }
           renderMessages();
@@ -790,8 +1111,9 @@
           hideTyping();
           updateControls();
           /* No fabricated reply is added, and stored history is left as it was. */
-          showError('The simulated reply failed: ' + (err && err.message ? err.message : 'unknown error') +
-            '. No M.A.Y.A. reply was added, and your saved history was not changed by the failure.');
+          var prefix = mode === 'live' ? 'The live reply failed: ' : 'The simulated reply failed: ';
+          showError(prefix + (err && err.message ? err.message : 'unknown error') +
+            ' No M.A.Y.A. reply was added, and your saved history was not changed by the failure.');
           inputEl.focus();
         });
       }
@@ -811,6 +1133,11 @@
         });
       }
 
+      /* ---------- Mode button ---------- */
+      modeBtn.addEventListener('click', function () {
+        setMode(mode === 'live' ? 'simulated' : 'live');
+      });
+
       /* ---------- Identity panel toggle ---------- */
       identityBtn.addEventListener('click', function () {
         var willShow = identityPanel.hidden;
@@ -826,7 +1153,7 @@
           return;
         }
         var payload = JSON.stringify(messages.map(function (m) {
-          return { id: m.id, role: m.role, text: m.text, ts: m.ts, persisted: !unsavedIds[m.id] };
+          return { id: m.id, role: m.role, text: m.text, ts: m.ts, mode: m.role === 'maya' ? (m.mode || 'simulated') : undefined, persisted: !unsavedIds[m.id] };
         }), null, 2);
         var blob = new Blob([payload], { type: 'application/json' });
         var url = URL.createObjectURL(blob);
@@ -861,8 +1188,11 @@
           showError('History could not be cleared (' + err.message + '). Nothing was changed.');
           return;
         }
-        /* The clear succeeded: retire this generation so any reply still
-           in flight from before the clear is discarded, never re-saved. */
+        /* The clear succeeded: cancel any live request still in flight,
+           drop the upstream chain id, and retire this generation so a
+           reply from before the clear is discarded, never re-saved. */
+        if (liveController) { try { liveController.abort(); } catch (err) {} liveController = null; }
+        clearChainId();
         generation++;
         messages = [];
         lastSavedLength = 0;
@@ -876,6 +1206,8 @@
 
       /* ---------- Init ---------- */
       loadHistory();
+      loadChainId();
+      updateModeUI();
       if (corrupt) {
         corruptBanner.hidden = false;
         corruptDetail.textContent = 'Detail: ' + corruptReason;
